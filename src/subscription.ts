@@ -2,48 +2,65 @@ import {
   OutputSchema as RepoEvent,
   isCommit,
 } from './lexicon/types/com/atproto/sync/subscribeRepos'
-import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
+import { FirehoseSubscriptionBase, getOpsByType, CreateOp } from './util/subscription'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
+  getPosts(creates: CreateOp<Record<any, any>>[]) {
+    const communityAuthors : {} = {
+      'did:plc:wdjhbjglrkyr5qfct7pkcslx': true,
+      'did:plc:n4u6dyepykflz4soyefg5ulc': true,
+      'did:plc:pcjsxxxxyzxsfqvqtd2xk324': true,
+      'did:plc:jz66fc77sij4xsogmn5v2epc': true,
+      'did:plc:kngrockcarangfubarqoyvdc': true,
+      'did:plc:lnzmajbr3ypizoraybki3wu5': true,
+      'did:plc:ijlbo4c5dfwummdgjpv3xbxq': true,
+      'did:plc:nmbuaylewf6faxu524bpnfmp': true,
+      'did:plc:onyfk52wfjagg6b5obypzsqu': true,
+      'did:plc:muixueha34qahryodb3tjblf': true,
+      'did:plc:v7on6gee4ulcla27p7nuhiyv': true,
+      'did:plc:sm4uhptbj2wv3oje7hn3o7de': true,
+    };
+    return creates.filter((create) => {
+      if (create.author && communityAuthors[create.author]) {
+        if (create.record.text) {
+          return !create.record.text.toLowerCase().includes('#np')
+        }
+        return true
+      }
+      return false
+    })
+    .map((create) => {
+      return {
+        uri: create.uri,
+        cid: create.cid,
+        indexedAt: new Date().toISOString(),
+      }
+    })
+  }
+
+  async storePosts(posts : ({cid: string, indexedAt: string, uri: string})[]) {
+    await this.db
+      .insertInto('post')
+      .values(posts)
+      .onConflict((oc) => oc.doNothing())
+      .execute()
+  }
+
   async handleEvent(evt: RepoEvent) {
     if (!isCommit(evt)) return
 
     const ops = await getOpsByType(evt)
 
-    // This logs the text of every post off the firehose.
-    // Just for fun :)
-    // Delete before actually using
-    for (const post of ops.posts.creates) {
-      console.log(post.record.text)
-    }
+    const postsToCreate = this.getPosts(ops.posts.creates)
 
-    const postsToDelete = ops.posts.deletes.map((del) => del.uri)
-    const postsToCreate = ops.posts.creates
-      .filter((create) => {
-        // only alf-related posts
-        return create.record.text.toLowerCase().includes('alf')
-      })
-      .map((create) => {
-        // map alf-related posts to a db row
-        return {
-          uri: create.uri,
-          cid: create.cid,
-          indexedAt: new Date().toISOString(),
-        }
-      })
-
-    if (postsToDelete.length > 0) {
-      await this.db
-        .deleteFrom('post')
-        .where('uri', 'in', postsToDelete)
-        .execute()
-    }
     if (postsToCreate.length > 0) {
-      await this.db
-        .insertInto('post')
-        .values(postsToCreate)
-        .onConflict((oc) => oc.doNothing())
-        .execute()
+      await this.storePosts(postsToCreate)
+    }
+
+    const repostsToCreate = this.getPosts(ops.reposts.creates)
+
+    if (repostsToCreate.length > 0) {
+      await this.storePosts(repostsToCreate)
     }
   }
 }
