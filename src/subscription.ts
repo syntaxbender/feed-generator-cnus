@@ -30,11 +30,17 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
       return false
     })
     .map((create) => {
-      return {
-        uri: create.uri,
-        cid: create.cid,
+      let post = create
+      if (create.record.$type == "app.bsky.feed.repost") {
+        post = create.record.subject
+      }
+      let res = {
+        uri: post.uri,
+        cid: post.cid,
         indexedAt: new Date().toISOString(),
       }
+      console.log(res)
+      return res
     })
   }
 
