@@ -6,7 +6,6 @@ import { createServer } from './lexicon'
 import feedGeneration from './methods/feed-generation'
 import describeGenerator from './methods/describe-generator'
 import { createDb, Database, migrateToLatest } from './db'
-import { FirehoseSubscription } from './subscription'
 import { AppContext, Config } from './config'
 import wellKnown from './well-known'
 import { AuthorFeedFetcher } from './authorfeed'
@@ -15,7 +14,6 @@ export class FeedGenerator {
   public app: express.Application
   public server?: http.Server
   public db: Database
-  public firehose: FirehoseSubscription
   public authorFeedFetcher: AuthorFeedFetcher
   public cfg: Config
 
@@ -37,13 +35,11 @@ export class FeedGenerator {
   constructor(
     app: express.Application,
     db: Database,
-    firehose: FirehoseSubscription,
     authorFeedFetcher: AuthorFeedFetcher,
     cfg: Config,
   ) {
     this.app = app
     this.db = db
-    this.firehose = firehose
     this.authorFeedFetcher = authorFeedFetcher
     this.cfg = cfg
   }
@@ -51,7 +47,6 @@ export class FeedGenerator {
   static create(cfg: Config) {
     const app = express()
     const db = createDb(cfg.sqliteLocation)
-    const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint)
     const authorFeedFetcher = new AuthorFeedFetcher(FeedGenerator.communityAuthors, db)
 
     const didCache = new MemoryCache()
@@ -78,12 +73,11 @@ export class FeedGenerator {
     app.use(server.xrpc.router)
     app.use(wellKnown(ctx))
 
-    return new FeedGenerator(app, db, firehose, authorFeedFetcher, cfg)
+    return new FeedGenerator(app, db, authorFeedFetcher, cfg)
   }
 
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
-    //this.firehose.run(this.cfg.subscriptionReconnectDelay)
     this.authorFeedFetcher.start()
     this.server = this.app.listen(this.cfg.port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
