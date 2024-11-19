@@ -39,7 +39,6 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
         cid: post.cid,
         indexedAt: new Date().toISOString(),
       }
-      console.log(res)
       return res
     })
   }

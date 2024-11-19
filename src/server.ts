@@ -9,23 +9,42 @@ import { createDb, Database, migrateToLatest } from './db'
 import { FirehoseSubscription } from './subscription'
 import { AppContext, Config } from './config'
 import wellKnown from './well-known'
+import { AuthorFeedFetcher } from './authorfeed'
 
 export class FeedGenerator {
   public app: express.Application
   public server?: http.Server
   public db: Database
   public firehose: FirehoseSubscription
+  public authorFeedFetcher: AuthorFeedFetcher
   public cfg: Config
+
+  private static communityAuthors : string[] =[
+    'did:plc:wdjhbjglrkyr5qfct7pkcslx',
+    'did:plc:n4u6dyepykflz4soyefg5ulc',
+    'did:plc:pcjsxxxxyzxsfqvqtd2xk324',
+    'did:plc:jz66fc77sij4xsogmn5v2epc',
+    'did:plc:kngrockcarangfubarqoyvdc',
+    'did:plc:lnzmajbr3ypizoraybki3wu5',
+    'did:plc:ijlbo4c5dfwummdgjpv3xbxq',
+    'did:plc:nmbuaylewf6faxu524bpnfmp',
+    'did:plc:onyfk52wfjagg6b5obypzsqu',
+    'did:plc:muixueha34qahryodb3tjblf',
+    'did:plc:v7on6gee4ulcla27p7nuhiyv',
+    'did:plc:sm4uhptbj2wv3oje7hn3o7de'
+  ];
 
   constructor(
     app: express.Application,
     db: Database,
     firehose: FirehoseSubscription,
+    authorFeedFetcher: AuthorFeedFetcher,
     cfg: Config,
   ) {
     this.app = app
     this.db = db
     this.firehose = firehose
+    this.authorFeedFetcher = authorFeedFetcher
     this.cfg = cfg
   }
 
@@ -33,6 +52,7 @@ export class FeedGenerator {
     const app = express()
     const db = createDb(cfg.sqliteLocation)
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint)
+    const authorFeedFetcher = new AuthorFeedFetcher(FeedGenerator.communityAuthors, db)
 
     const didCache = new MemoryCache()
     const didResolver = new DidResolver({
@@ -58,12 +78,13 @@ export class FeedGenerator {
     app.use(server.xrpc.router)
     app.use(wellKnown(ctx))
 
-    return new FeedGenerator(app, db, firehose, cfg)
+    return new FeedGenerator(app, db, firehose, authorFeedFetcher, cfg)
   }
 
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
-    this.firehose.run(this.cfg.subscriptionReconnectDelay)
+    //this.firehose.run(this.cfg.subscriptionReconnectDelay)
+    this.authorFeedFetcher.start()
     this.server = this.app.listen(this.cfg.port, this.cfg.listenhost)
     await events.once(this.server, 'listening')
     return this.server
