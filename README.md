@@ -1,4 +1,4 @@
-# ATProto Feed Generator
+# ATProto Feed Generator (Poll Based small community feed - save your traffic cost)
 
 This is a starter kit for creating ATProto Feed Generators. It's not feature complete, but should give you a good starting ground off of which to build and deploy a feed.
 
@@ -28,9 +28,9 @@ We've set up this simple server with SQLite to store and query data. Feel free t
 
 Next, you will need to do two things:
 
-1. Implement indexing logic in `src/subscription.ts`. 
+1. Implement indexing logic in `src/authorfeed.ts`. 
    
-   This will subscribe to the repo subscription stream on startup, parse events and index them according to your provided logic.
+   This will periodically poll author feeds feom a given group of authors and index the posts.
 
 2. Implement feed generation logic in `src/algos`
 
@@ -137,16 +137,6 @@ Depending on your algorithm, you likely do not need to keep posts around for lon
 
 Some examples:
 
-### Reimplementing What's Hot
-To reimplement "What's Hot", you may subscribe to the firehose and filter for all posts and likes (ignoring profiles/reposts/follows/etc.). You would keep a running tally of likes per post and when a PDS requests a feed, you would send the most recent posts that pass some threshold of likes.
-
 ### A Community Feed
-You might create a feed for a given community by compiling a list of DIDs within that community and filtering the firehose for all posts from users within that list.
+You might create a feed for a given community by compiling a list of DIDs within that community and polling for all posts from users within that list.
 
-### A Topical Feed
-To implement a topical feed, you might filter the algorithm for posts and pass the post text through some filtering mechanism (an LLM, a keyword matcher, etc.) that filters for the topic of your choice.
-
-## Community Feed Generator Templates
-
-- [Python](https://github.com/MarshalX/bluesky-feed-generator) - [@MarshalX](https://github.com/MarshalX)
-- [Ruby](https://github.com/mackuba/bluesky-feeds-rb) - [@mackuba](https://github.com/mackuba)
