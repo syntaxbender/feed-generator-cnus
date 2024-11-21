@@ -38,14 +38,18 @@ export class AuthorFeedFetcher {
       const posts: {uri: string, cid: string, indexedAt: string}[] = [];
       const cursor = await this.getCursorByAuthor(user);
       let latest:number = 0;
-      feed.forEach(function(entry: {post: {uri: string, cid: string, record: {createdAt: string}}}){
+      feed.forEach(function(entry: {post: {uri: string, cid: string, record: {createdAt: string}}, reason: {$type: string, indexedAt: string}}){
         const post = entry.post;
         const uri = post?.uri;
         const cid = post?.cid;
         const createdAt = post?.record?.createdAt;
+        const reason = entry.reason;
+        const reasonType = reason?.$type;
+        const respostedAt = reason?.indexedAt;
+        const newCursor = reasonType === "app.bsky.feed.defs#reasonRepost" ? respostedAt : createdAt;
         const previous = cursor ? new Date(cursor).getTime() : 0;
-        if (uri && cid && createdAt) {
-          const ts = new Date(createdAt).getTime();
+        if (uri && cid && newCursor) {
+          const ts = new Date(newCursor).getTime();
           if (ts > previous) {
             latest = latest < ts ? ts : latest;
             posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString()});
