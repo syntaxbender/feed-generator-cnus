@@ -1,21 +1,42 @@
 import { Database } from './db'
-import { sql } from 'kysely'
-import { DataDiff } from '@atproto/repo'
-import { it } from 'node:test'
 
 export class AuthorFeedFetcher {
-  private users: string[]; // List of users to query
+  private user: string; // the user who follows all authors
   private intervalId: NodeJS.Timeout | null; // To store the interval ID
   private fetchInterval: number; // Interval time in milliseconds
   private limit: number;
   private db: Database;
 
-  constructor(users: string[], db: Database, fetchInterval: number = 60000, limit: number = 20) {
-    this.users = users;
+  constructor(user: string, db: Database, fetchInterval: number = 60000, limit: number = 20) {
+    this.user = user;
     this.fetchInterval = fetchInterval; // Default to 1 minute
     this.intervalId = null; // Initially not set
     this.limit = limit;
     this.db = db;
+  }
+
+  private async getAuthors(): Promise<string[]> {
+    const endpoint = `https://public.api.bsky.app/xrpc/app.bsky.graph.getFollows?actor=${this.user}&limit=100`;
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data: unknown = await response.json();
+      const follows: {}[] = (data as {follows: {did: string}[]}).follows;
+      const result: string[] = [];
+      follows.forEach(function(entry:{did: string}) {
+        result.push(entry.did);
+      });
+      return result;
+    } finally {
+    }
   }
 
   // Method to fetch a single author's feed
@@ -47,6 +68,7 @@ export class AuthorFeedFetcher {
         const reasonType = reason?.$type;
         const respostedAt = reason?.indexedAt;
         const newCursor = reasonType === "app.bsky.feed.defs#reasonRepost" ? respostedAt : createdAt;
+        console.log(newCursor);
         const previous = cursor ? new Date(cursor).getTime() : 0;
         if (uri && cid && newCursor) {
           const ts = new Date(newCursor).getTime();
@@ -69,7 +91,8 @@ export class AuthorFeedFetcher {
   // Method to fetch all feeds
   private async fetchAllFeeds(): Promise<void> {
     console.log("Fetching feeds...");
-    for (const user of this.users) {
+    const users = await this.getAuthors();
+    for (const user of users) {
       try {
         await this.getAuthorFeed(user);
       } catch (error) {

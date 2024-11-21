@@ -32,6 +32,9 @@ export class FeedGenerator {
     'did:plc:sm4uhptbj2wv3oje7hn3o7de'
   ];
 
+  // this user follows all the authors we use to generate the feed.
+  private static feedCreator : string = 'did:plc:mz55jom266qo3klyvq3brfs6';
+
   constructor(
     app: express.Application,
     db: Database,
@@ -47,7 +50,7 @@ export class FeedGenerator {
   static create(cfg: Config) {
     const app = express()
     const db = createDb(cfg.sqliteLocation)
-    const authorFeedFetcher = new AuthorFeedFetcher(FeedGenerator.communityAuthors, db)
+    const authorFeedFetcher = new AuthorFeedFetcher(FeedGenerator.feedCreator, db)
 
     const didCache = new MemoryCache()
     const didResolver = new DidResolver({
