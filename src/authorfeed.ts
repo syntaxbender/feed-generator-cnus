@@ -56,7 +56,7 @@ export class AuthorFeedFetcher {
 
       const data: unknown = await response.json();
       const feed: {}[] = (data as {feed: {}[]}).feed;
-      const posts: {uri: string, cid: string, indexedAt: string}[] = [];
+      const posts: {uri: string, cid: string, indexedAt: string, user: string}[] = [];
       const cursor = await this.getCursorByAuthor(user);
       let latest:number = 0;
       feed.forEach(function(entry: {post: {uri: string, cid: string, record: {createdAt: string}}, reason: {$type: string, indexedAt: string}}){
@@ -74,7 +74,7 @@ export class AuthorFeedFetcher {
           const ts = new Date(newCursor).getTime();
           if (ts > previous) {
             latest = latest < ts ? ts : latest;
-            posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString()});
+            posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString(), user: user});
           }
         }
       })
@@ -132,7 +132,7 @@ export class AuthorFeedFetcher {
       .execute();
   }
 
-  async storePosts(posts : ({cid: string, indexedAt: string, uri: string})[]) {
+  async storePosts(posts : ({cid: string, indexedAt: string, uri: string, user: string})[]) {
     await this.db
       .insertInto('post')
       .values(posts)

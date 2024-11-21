@@ -15,6 +15,7 @@ migrations['001'] = {
       .addColumn('uri', 'varchar', (col) => col.primaryKey())
       .addColumn('cid', 'varchar', (col) => col.notNull())
       .addColumn('indexedAt', 'varchar', (col) => col.notNull())
+      .addColumn('user', 'varchar', (col) => col.notNull())
       .execute()
     await db.schema
       .createTable('author')

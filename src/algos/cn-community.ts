@@ -4,6 +4,10 @@ import { AppContext } from '../config'
 // max 15 chars
 export const shortname = 'cn-community'
 
+const blockedUsers = {
+  'did:plc:z72i7hdynmk6r22z27h6tvur': true,
+}
+
 export const handler = async (ctx: AppContext, params: QueryParams) => {
   let builder = ctx.db
     .selectFrom('post')
@@ -18,7 +22,7 @@ export const handler = async (ctx: AppContext, params: QueryParams) => {
   }
   const res = await builder.execute()
 
-  const feed = res.map((row) => ({
+  const feed = res.filter((row) => !blockedUsers[row.user]).map((row) => ({
     post: row.uri,
   }))
 

@@ -8,6 +8,7 @@ export type Post = {
   uri: string
   cid: string
   indexedAt: string
+  user: string
 }
 
 export type Author = {
