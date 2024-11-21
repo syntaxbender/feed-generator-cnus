@@ -43,7 +43,7 @@ export class AuthorFeedFetcher {
         const cid = post?.cid;
         const createdAt = post?.record?.createdAt;
         if (uri && cid && createdAt) {
-          posts.push({uri: uri, cid: cid, indexedAt: createdAt});
+          posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString()});
         }
       })
       const previous = cursor ? new Date(cursor).getTime() : 0;
