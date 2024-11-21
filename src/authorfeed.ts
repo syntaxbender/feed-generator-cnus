@@ -37,30 +37,24 @@ export class AuthorFeedFetcher {
       const feed: {}[] = (data as {feed: {}[]}).feed;
       const posts: {uri: string, cid: string, indexedAt: string}[] = [];
       const cursor = await this.getCursorByAuthor(user);
+      let latest:number = 0;
       feed.forEach(function(entry: {post: {uri: string, cid: string, record: {createdAt: string}}}){
         const post = entry.post;
         const uri = post?.uri;
         const cid = post?.cid;
         const createdAt = post?.record?.createdAt;
+        const previous = cursor ? new Date(cursor).getTime() : 0;
         if (uri && cid && createdAt) {
-          posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString()});
+          const ts = new Date(createdAt).getTime();
+          if (ts > previous) {
+            latest = latest < ts ? ts : latest;
+            posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString()});
+          }
         }
       })
-      const previous = cursor ? new Date(cursor).getTime() : 0;
-      let latest:number = 0;
-      const filteredPosts = posts.filter(
-        (post) => {
-          const ts = new Date(post.indexedAt).getTime();
-          if (ts <= previous) {
-            return false;
-          }
-          latest = latest < ts ? ts : latest;
-          return true;
-        }
-      );
-      if (filteredPosts && filteredPosts.length) {
+      if (posts && posts.length) {
         await this.updateCursor({author: user, cursor: new Date(latest).toISOString()});
-        await this.storePosts(filteredPosts);
+        await this.storePosts(posts);
       }
 
     } catch (error) {
