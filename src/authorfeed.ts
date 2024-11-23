@@ -41,7 +41,10 @@ export class AuthorFeedFetcher {
 
   // Method to fetch a single author's feed
   private async getAuthorFeed(user: string): Promise<void> {
-    const endpoint = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${user}&limit=${this.limit}`;
+    const cursor = await this.getCursorByAuthor(user);
+    const previous = cursor ? new Date(cursor).getTime() : 0;
+    const limit = cursor ? this.limit : 100;
+    const endpoint = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${user}&limit=${limit}`;
     try {
       const response = await fetch(endpoint, {
         method: "GET",
@@ -56,8 +59,10 @@ export class AuthorFeedFetcher {
 
       const data: unknown = await response.json();
       const feed: {}[] = (data as {feed: {}[]}).feed;
+      if (!feed || !feed.length) {
+        return;
+      }
       const posts: {uri: string, cid: string, indexedAt: string, user: string}[] = [];
-      const cursor = await this.getCursorByAuthor(user);
       let latest:number = 0;
       feed.forEach(function(entry: {post: {uri: string, cid: string, record: {createdAt: string}}, reason: {$type: string, indexedAt: string}}){
         const post = entry.post;
@@ -68,21 +73,18 @@ export class AuthorFeedFetcher {
         const reasonType = reason?.$type;
         const respostedAt = reason?.indexedAt;
         const newCursor = reasonType === "app.bsky.feed.defs#reasonRepost" ? respostedAt : createdAt;
-        console.log(newCursor);
-        const previous = cursor ? new Date(cursor).getTime() : 0;
         if (uri && cid && newCursor) {
           const ts = new Date(newCursor).getTime();
           if (ts > previous) {
             latest = latest < ts ? ts : latest;
-            posts.push({uri: uri, cid: cid, indexedAt: new Date().toISOString(), user: user});
+            posts.push({uri: uri, cid: cid, indexedAt: cursor ? new Date().toISOString() : new Date(newCursor).toISOString(), user: user});
           }
         }
-      })
+      });
       if (posts && posts.length) {
         await this.updateCursor({author: user, cursor: new Date(latest).toISOString()});
         await this.storePosts(posts);
       }
-
     } catch (error) {
       console.error(`Error fetching feed for user ${user}:`, error);
     }
