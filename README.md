@@ -1,3 +1,4 @@
+https://github.com/syntaxbender/feed-generator-cnus/blob/main/src/authorfeed.ts
 # ATProto Feed Generator (Poll Based small community feed - save your traffic cost)
 
 This is a starter kit for creating ATProto Feed Generators. It's not feature complete, but should give you a good starting ground off of which to build and deploy a feed.
